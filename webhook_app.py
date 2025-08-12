@@ -21,8 +21,13 @@ def ensure_bot_initialized():
     """Ensure the bot is initialized before processing requests"""
     global telegram_app, _initialized
     if not _initialized:
-        setup_telegram_app()
-        _initialized = True
+        try:
+            setup_telegram_app()
+            _initialized = True
+            logger.info("Bot initialization completed successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize bot: {e}")
+            raise
 
 # Environment variables
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -256,11 +261,13 @@ def webhook():
             
             # Parse the incoming update
             update = Update.de_json(request.get_json(), telegram_app.bot)
+            logger.info(f"Received update: {update.update_id} - Type: {update.message.message_type if update.message else 'Unknown'}")
             
             # Process the update using the application's event loop
             if telegram_app and telegram_app.bot:
-                # Use the application's built-in update processing
-                telegram_app.process_update(update)
+                # Use asyncio.run to properly handle async command handlers
+                asyncio.run(telegram_app.process_update(update))
+                logger.info(f"Successfully processed update: {update.update_id}")
                 return jsonify({'status': 'ok'}), 200
             else:
                 logger.error("Telegram application not properly initialized")
@@ -268,6 +275,7 @@ def webhook():
                 
         except Exception as e:
             logger.error(f"Error processing webhook: {e}")
+            logger.error(f"Update data: {request.get_json()}")
             return jsonify({'error': str(e)}), 500
     
     return jsonify({'error': 'Method not allowed'}), 405
