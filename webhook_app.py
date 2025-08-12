@@ -14,6 +14,13 @@ load_dotenv()
 # Configure Flask app
 app = Flask(__name__)
 
+@app.before_first_request
+def initialize_bot():
+    """Initialize the bot before the first request"""
+    global telegram_app
+    if not telegram_app:
+        setup_telegram_app()
+
 # Environment variables
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
@@ -244,10 +251,15 @@ def webhook():
             # Parse the incoming update
             update = Update.de_json(request.get_json(), telegram_app.bot)
             
-            # Process the update asynchronously
-            asyncio.run(telegram_app.process_update(update))
-            
-            return jsonify({'status': 'ok'}), 200
+            # Process the update using the application's event loop
+            if telegram_app and telegram_app.bot:
+                # Use the application's built-in update processing
+                telegram_app.process_update(update)
+                return jsonify({'status': 'ok'}), 200
+            else:
+                logger.error("Telegram application not properly initialized")
+                return jsonify({'error': 'Bot not initialized'}), 500
+                
         except Exception as e:
             logger.error(f"Error processing webhook: {e}")
             return jsonify({'error': str(e)}), 500
@@ -354,8 +366,12 @@ def setup_telegram_app():
 
     # Location-based weather handler
     telegram_app.add_handler(MessageHandler(filters.LOCATION, location_weather))
+    
+    # Initialize the application
+    asyncio.run(telegram_app.initialize())
 
-if __name__ == '__main__':
+def create_app():
+    """Create and configure the Flask application"""
     # Validate environment variables
     if not TELEGRAM_TOKEN:
         logger.error("TELEGRAM_TOKEN environment variable not set")
@@ -372,8 +388,16 @@ if __name__ == '__main__':
     # Setup Telegram application
     setup_telegram_app()
     
-    logger.info(f"Starting Flask webhook server on port {WEBHOOK_PORT}")
+    logger.info(f"Telegram application initialized successfully")
     logger.info(f"Webhook URL will be: {WEBHOOK_URL}/webhook")
+    
+    return app
+
+if __name__ == '__main__':
+    # Create and configure the app
+    app = create_app()
+    
+    logger.info(f"Starting Flask webhook server on port {WEBHOOK_PORT}")
     
     # Run Flask app
     port = int(os.environ.get('PORT', WEBHOOK_PORT))
