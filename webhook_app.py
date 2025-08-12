@@ -1,22 +1,35 @@
 import logging
-from telegram import Update
-from datetime import datetime
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-import requests
-import matplotlib.pyplot as plt
 import os
+import requests
+from flask import Flask, request, jsonify
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from datetime import datetime
+import matplotlib.pyplot as plt
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Your API keys
+# Configure Flask app
+app = Flask(__name__)
+
+# Environment variables
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # Your public HTTPS URL
+WEBHOOK_PORT = int(os.getenv("WEBHOOK_PORT", "8443"))
 
 # Configure logging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
-# Define a function to get weather info from OpenWeatherMap
+# Global application instance
+telegram_app = None
+
+# Weather API functions (unchanged from original)
 def get_weather(city, units):
     url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units={units}"
     response = requests.get(url)
@@ -58,8 +71,7 @@ def get_weather(city, units):
         )
     else:
         return "Sorry, I couldn't find that city. Please make sure the name is correct."
-    
-# Function to get air quality information
+
 def get_air_quality(lat, lon):
     air_quality_url = f"http://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={WEATHER_API_KEY}"
     response = requests.get(air_quality_url)
@@ -79,9 +91,8 @@ def get_air_quality(lat, lon):
     else:
         return "Air quality data unavailable."
 
-# Define a function to get weather forecasts (3-day or 7-day)
 def get_forecast(city, days=3, units="metric"):
-    url = f"http://api.openweathermap.org/data/2.5/forecast?q={city}&appid={WEATHER_API_KEY}&units={units}&cnt={days * 8}"  # 8 data points per day
+    url = f"http://api.openweathermap.org/data/2.5/forecast?q={city}&appid={WEATHER_API_KEY}&units={units}&cnt={days * 8}"
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
@@ -95,7 +106,6 @@ def get_forecast(city, days=3, units="metric"):
     else:
         return "Sorry, I couldn't fetch the forecast. Please try again later."
 
-# Function to generate a graph for weather data
 def generate_weather_graph(forecast_data, city):
     # Extract data for plotting
     times = [entry["dt_txt"] for entry in forecast_data["list"]]
@@ -117,11 +127,10 @@ def generate_weather_graph(forecast_data, city):
     plt.close()
     return graph_path
 
-# Define the start command
+# Command handlers (unchanged from original)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text("Hi! I’m a weather bot. Use /weather <city> to get the weather, or /forecast <city> to get the forecast.")
+    await update.message.reply_text("Hi! I'm a weather bot. Use /weather <city> to get the weather, or /forecast <city> to get the forecast.")
 
-# Define the help command
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     help_text = (
         "Here are the commands you can use:\n\n"
@@ -135,7 +144,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     )
     await update.message.reply_text(help_text)
 
-# Default to metric units if user hasn't set preference
 async def set_unit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if len(context.args) > 0:
         unit = context.args[0].lower()
@@ -147,17 +155,15 @@ async def set_unit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     else:
         await update.message.reply_text("Please specify a unit: /unit celsius or /unit fahrenheit.")
 
-# Define the weather command
 async def weather(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if len(context.args) > 0:
         city = ' '.join(context.args)
-        units = context.user_data.get("units", "metric")  # Default to metric if no preference set
+        units = context.user_data.get("units", "metric")
         weather_info = get_weather(city, units)
         await update.message.reply_text(weather_info)
     else:
         await update.message.reply_text("Please specify a city. Example: /weather London")
 
-# Define the forecast command
 async def forecast(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if len(context.args) > 0:
         city = ' '.join(context.args)
@@ -166,16 +172,12 @@ async def forecast(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     else:
         await update.message.reply_text("Please specify a city. Example: /forecast London")
 
-# Define the compare command
 async def compare(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if len(context.args) >= 2:
-        # Get the cities from the command arguments
         city1, city2 = ' '.join(context.args[:-1]), context.args[-1]
-        units = context.user_data.get("units", "metric")  # Default to metric if no preference set
-        # Get weather information for both cities
+        units = context.user_data.get("units", "metric")
         weather_city1 = get_weather(city1, units)
         weather_city2 = get_weather(city2, units)
-        # Format the comparison message
         comparison_message = f"Weather Comparison:\n\n{city1}:\n{weather_city1}\n\n{city2}:\n{weather_city2}"
         await update.message.reply_text(comparison_message)
     else:
@@ -200,7 +202,6 @@ async def forecast_graph(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     else:
         await update.message.reply_text("Please specify a city. Example: /forecastgraph London")
 
-# Handle user location for weather
 async def location_weather(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     location = update.message.location
     if location:
@@ -217,24 +218,142 @@ async def location_weather(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     else:
         await update.message.reply_text("Please share your location to get weather updates.")
 
-# Main function to set up handlers
-def main():
-    app = Application.builder().token(TELEGRAM_TOKEN).build()
+# Flask routes for webhook management
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    """Handle incoming webhook updates from Telegram"""
+    if request.method == 'POST':
+        try:
+            # Parse the incoming update
+            update = Update.de_json(request.get_json(), telegram_app.bot)
+            
+            # Process the update
+            telegram_app.process_update(update)
+            
+            return jsonify({'status': 'ok'}), 200
+        except Exception as e:
+            logger.error(f"Error processing webhook: {e}")
+            return jsonify({'error': str(e)}), 500
+    
+    return jsonify({'error': 'Method not allowed'}), 405
+
+@app.route('/set_webhook', methods=['GET', 'POST'])
+def set_webhook():
+    """Set the webhook URL with Telegram"""
+    try:
+        if not WEBHOOK_URL:
+            return jsonify({'error': 'WEBHOOK_URL environment variable not set'}), 400
+        
+        webhook_url = f"{WEBHOOK_URL}/webhook"
+        result = telegram_app.bot.set_webhook(url=webhook_url)
+        
+        if result:
+            logger.info(f"Webhook set successfully to {webhook_url}")
+            return jsonify({
+                'status': 'success',
+                'message': f'Webhook set to {webhook_url}',
+                'webhook_url': webhook_url
+            }), 200
+        else:
+            return jsonify({'error': 'Failed to set webhook'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error setting webhook: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/delete_webhook', methods=['GET', 'POST'])
+def delete_webhook():
+    """Remove the webhook from Telegram"""
+    try:
+        result = telegram_app.bot.delete_webhook()
+        
+        if result:
+            logger.info("Webhook deleted successfully")
+            return jsonify({
+                'status': 'success',
+                'message': 'Webhook deleted successfully'
+            }), 200
+        else:
+            return jsonify({'error': 'Failed to delete webhook'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error deleting webhook: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/webhook_info', methods=['GET'])
+def webhook_info():
+    """Get current webhook information from Telegram"""
+    try:
+        webhook_info = telegram_app.bot.get_webhook_info()
+        
+        return jsonify({
+            'status': 'success',
+            'webhook_info': {
+                'url': webhook_info.url,
+                'has_custom_certificate': webhook_info.has_custom_certificate,
+                'pending_update_count': webhook_info.pending_update_count,
+                'last_error_date': webhook_info.last_error_date.isoformat() if webhook_info.last_error_date else None,
+                'last_error_message': webhook_info.last_error_message,
+                'max_connections': webhook_info.max_connections,
+                'allowed_updates': webhook_info.allowed_updates
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting webhook info: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint"""
+    return jsonify({
+        'status': 'healthy',
+        'bot_username': telegram_app.bot.username,
+        'webhook_url': f"{WEBHOOK_URL}/webhook" if WEBHOOK_URL else None
+    }), 200
+
+def setup_telegram_app():
+    """Initialize the Telegram application with handlers"""
+    global telegram_app
+    
+    telegram_app = Application.builder().token(TELEGRAM_TOKEN).build()
 
     # Command handlers
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(CommandHandler("weather", weather))
-    app.add_handler(CommandHandler("forecast", forecast))
-    app.add_handler(CommandHandler("unit", set_unit))
-    app.add_handler(CommandHandler("forecastgraph", forecast_graph))
-    app.add_handler(CommandHandler("compare", compare))
+    telegram_app.add_handler(CommandHandler("start", start))
+    telegram_app.add_handler(CommandHandler("help", help_command))
+    telegram_app.add_handler(CommandHandler("weather", weather))
+    telegram_app.add_handler(CommandHandler("forecast", forecast))
+    telegram_app.add_handler(CommandHandler("unit", set_unit))
+    telegram_app.add_handler(CommandHandler("forecastgraph", forecast_graph))
+    telegram_app.add_handler(CommandHandler("compare", compare))
 
     # Location-based weather handler
-    app.add_handler(MessageHandler(filters.LOCATION, location_weather))
+    telegram_app.add_handler(MessageHandler(filters.LOCATION, location_weather))
 
-    # Start the Bot
-    app.run_polling()
-
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    # Validate environment variables
+    if not TELEGRAM_TOKEN:
+        logger.error("TELEGRAM_TOKEN environment variable not set")
+        exit(1)
+    
+    if not WEBHOOK_URL:
+        logger.error("WEBHOOK_URL environment variable not set")
+        exit(1)
+    
+    if not WEATHER_API_KEY:
+        logger.error("WEATHER_API_KEY environment variable not set")
+        exit(1)
+    
+    # Setup Telegram application
+    setup_telegram_app()
+    
+    logger.info(f"Starting Flask webhook server on port {WEBHOOK_PORT}")
+    logger.info(f"Webhook URL will be: {WEBHOOK_URL}/webhook")
+    
+    # Run Flask app
+    port = int(os.environ.get('PORT', WEBHOOK_PORT))
+    app.run(
+        host='0.0.0.0',
+        port=port,
+        debug=False
+    )
