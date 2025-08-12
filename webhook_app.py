@@ -220,6 +220,22 @@ async def location_weather(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         await update.message.reply_text("Please share your location to get weather updates.")
 
 # Flask routes for webhook management
+@app.route('/', methods=['GET'])
+def home():
+    """Home page with bot information"""
+    return jsonify({
+        'status': 'running',
+        'bot_name': 'FrostByte Weather Bot',
+        'webhook_url': f"{WEBHOOK_URL}/webhook" if WEBHOOK_URL else None,
+        'endpoints': {
+            'webhook': '/webhook',
+            'set_webhook': '/set_webhook',
+            'delete_webhook': '/delete_webhook',
+            'webhook_info': '/webhook_info',
+            'health': '/health'
+        }
+    }), 200
+
 @app.route('/webhook', methods=['POST'])
 def webhook():
     """Handle incoming webhook updates from Telegram"""
@@ -228,8 +244,8 @@ def webhook():
             # Parse the incoming update
             update = Update.de_json(request.get_json(), telegram_app.bot)
             
-            # Process the update
-            telegram_app.process_update(update)
+            # Process the update asynchronously
+            asyncio.run(telegram_app.process_update(update))
             
             return jsonify({'status': 'ok'}), 200
         except Exception as e:
@@ -246,7 +262,7 @@ def set_webhook():
             return jsonify({'error': 'WEBHOOK_URL environment variable not set'}), 400
         
         webhook_url = f"{WEBHOOK_URL}/webhook"
-        result = telegram_app.bot.set_webhook(url=webhook_url)
+        result = asyncio.run(telegram_app.bot.set_webhook(url=webhook_url))
         
         if result:
             logger.info(f"Webhook set successfully to {webhook_url}")
@@ -266,7 +282,7 @@ def set_webhook():
 def delete_webhook():
     """Remove the webhook from Telegram"""
     try:
-        result = telegram_app.bot.delete_webhook()
+        result = asyncio.run(telegram_app.bot.delete_webhook())
         
         if result:
             logger.info("Webhook deleted successfully")
@@ -307,11 +323,19 @@ def webhook_info():
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
-    return jsonify({
-        'status': 'healthy',
-        'bot_username': telegram_app.bot.username,
-        'webhook_url': f"{WEBHOOK_URL}/webhook" if WEBHOOK_URL else None
-    }), 200
+    try:
+        return jsonify({
+            'status': 'healthy',
+            'bot_username': telegram_app.bot.username if telegram_app and telegram_app.bot else None,
+            'webhook_url': f"{WEBHOOK_URL}/webhook" if WEBHOOK_URL else None
+        }), 200
+    except Exception as e:
+        logger.error(f"Error in health check: {e}")
+        return jsonify({
+            'status': 'healthy',
+            'bot_username': None,
+            'webhook_url': f"{WEBHOOK_URL}/webhook" if WEBHOOK_URL else None
+        }), 200
 
 def setup_telegram_app():
     """Initialize the Telegram application with handlers"""
