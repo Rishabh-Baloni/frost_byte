@@ -261,7 +261,13 @@ def webhook():
             
             # Parse the incoming update
             update = Update.de_json(request.get_json(), telegram_app.bot)
-            logger.info(f"Received update: {update.update_id} - Type: {update.message.message_type if update.message else 'Unknown'}")
+            
+            # Log the update details safely
+            if update.message:
+                message_type = "text" if update.message.text else "other"
+                logger.info(f"Received update: {update.update_id} - Type: {message_type} - Content: {update.message.text[:50] if update.message.text else 'N/A'}")
+            else:
+                logger.info(f"Received update: {update.update_id} - Type: Unknown")
             
             # Process the update using the application's event loop
             if telegram_app and telegram_app.bot:
