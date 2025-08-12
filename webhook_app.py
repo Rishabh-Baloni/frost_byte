@@ -1,6 +1,7 @@
 import logging
 import os
 import requests
+import asyncio
 from flask import Flask, request, jsonify
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -284,8 +285,8 @@ def delete_webhook():
 def webhook_info():
     """Get current webhook information from Telegram"""
     try:
-        webhook_info = telegram_app.bot.get_webhook_info()
-        
+        webhook_info = asyncio.run(telegram_app.bot.get_webhook_info())
+
         return jsonify({
             'status': 'success',
             'webhook_info': {
@@ -298,7 +299,7 @@ def webhook_info():
                 'allowed_updates': webhook_info.allowed_updates
             }
         }), 200
-        
+
     except Exception as e:
         logger.error(f"Error getting webhook info: {e}")
         return jsonify({'error': str(e)}), 500
