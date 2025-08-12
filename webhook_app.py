@@ -14,12 +14,15 @@ load_dotenv()
 # Configure Flask app
 app = Flask(__name__)
 
-@app.before_first_request
-def initialize_bot():
-    """Initialize the bot before the first request"""
-    global telegram_app
-    if not telegram_app:
+# Initialize bot on first request
+_initialized = False
+
+def ensure_bot_initialized():
+    """Ensure the bot is initialized before processing requests"""
+    global telegram_app, _initialized
+    if not _initialized:
         setup_telegram_app()
+        _initialized = True
 
 # Environment variables
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -248,6 +251,9 @@ def webhook():
     """Handle incoming webhook updates from Telegram"""
     if request.method == 'POST':
         try:
+            # Ensure bot is initialized
+            ensure_bot_initialized()
+            
             # Parse the incoming update
             update = Update.de_json(request.get_json(), telegram_app.bot)
             
@@ -273,6 +279,9 @@ def set_webhook():
         if not WEBHOOK_URL:
             return jsonify({'error': 'WEBHOOK_URL environment variable not set'}), 400
         
+        # Ensure bot is initialized
+        ensure_bot_initialized()
+        
         webhook_url = f"{WEBHOOK_URL}/webhook"
         result = asyncio.run(telegram_app.bot.set_webhook(url=webhook_url))
         
@@ -294,6 +303,9 @@ def set_webhook():
 def delete_webhook():
     """Remove the webhook from Telegram"""
     try:
+        # Ensure bot is initialized
+        ensure_bot_initialized()
+        
         result = asyncio.run(telegram_app.bot.delete_webhook())
         
         if result:
@@ -313,6 +325,9 @@ def delete_webhook():
 def webhook_info():
     """Get current webhook information from Telegram"""
     try:
+        # Ensure bot is initialized
+        ensure_bot_initialized()
+        
         webhook_info = asyncio.run(telegram_app.bot.get_webhook_info())
 
         return jsonify({
