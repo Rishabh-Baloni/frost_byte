@@ -199,7 +199,7 @@ async def set_unit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         else:
             await update.message.reply_text("❌ Please specify either 'celsius' or 'fahrenheit'.")
     else:
-        await update.message.reply_text("❌ Please specify a unit: /unit celsius or /unit fahrenheit.")
+        await update.message.reply_text("❌ Please specify a unit:\n/unit celsius or /unit fahrenheit")
 
 async def weather(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if len(context.args) > 0:
@@ -208,7 +208,7 @@ async def weather(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         weather_info = get_weather(city, units)
         await update.message.reply_text(weather_info)
     else:
-        await update.message.reply_text("❌ Please specify a city. Example: /weather London")
+        await update.message.reply_text("❌ Please specify a city.\nExample: /weather London")
 
 async def forecast(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if len(context.args) > 0:
@@ -216,7 +216,7 @@ async def forecast(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         forecast_info = get_forecast(city)
         await update.message.reply_text(forecast_info)
     else:
-        await update.message.reply_text("❌ Please specify a city. Example: /forecast London")
+        await update.message.reply_text("❌ Please specify a city.\nExample: /forecast London")
 
 async def compare(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.info(f"Compare command received. Args: {context.args}")
@@ -234,7 +234,7 @@ async def compare(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         comparison_message = f"🌤️ Weather Comparison\n\n📍 {city1.title()}:\n{weather_city1}\n\n📍 {city2.title()}:\n{weather_city2}"
         await update.message.reply_text(comparison_message)
     else:
-        await update.message.reply_text("❌ Please specify two cities to compare. Example: /compare London Paris")
+        await update.message.reply_text("❌ Please specify two cities to compare.\nExample: /compare London Paris")
 
 async def forecast_graph(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if len(context.args) > 0:
@@ -253,7 +253,7 @@ async def forecast_graph(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         else:
             await update.message.reply_text("❌ Sorry, I couldn't fetch the forecast data.")
     else:
-        await update.message.reply_text("❌ Please specify a city. Example: /forecastgraph London")
+        await update.message.reply_text("❌ Please specify a city.\nExample: /forecastgraph London")
 
 async def location_weather(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     location = update.message.location
