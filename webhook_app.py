@@ -193,7 +193,23 @@ def generate_weather_graph(forecast_data, city):
 
 # Command handlers (unchanged from original)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text("🌤️ Hi! I'm FrostByte Weather Bot. Use /weather <city> to get the weather, or /forecast <city> to get the forecast.")
+    welcome_message = (
+        f"🎆 Welcome to FrostByte Weather Bot! 🎆\n\n"
+        f"Hello {update.effective_user.first_name}! 👋\n\n"
+        f"🌤️ I'm your personal weather assistant, ready to provide you with:\n\n"
+        f"• 🌡️ Real-time weather updates\n"
+        f"• 📅 Multi-day weather forecasts\n"
+        f"• 📍 Location-based weather reports\n"
+        f"• ⚖️ Weather comparisons between cities\n"
+        f"• 📈 Visual temperature graphs\n"
+        f"• 🌅 Sunrise/sunset times & air quality\n\n"
+        f"🚀 Quick Start:\n"
+        f"• Type /weather London for instant weather\n"
+        f"• Share your location for local weather\n"
+        f"• Use /help to see all available commands\n\n"
+        f"🌟 Let's get started with your weather journey!"
+    )
+    await update.message.reply_text(welcome_message)
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     help_text = (
