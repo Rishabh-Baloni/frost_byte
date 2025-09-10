@@ -292,9 +292,14 @@ def webhook():
             
             # Process the update using the application's event loop
             if telegram_app and telegram_app.bot:
-                # Use asyncio.run to properly handle async command handlers
-                asyncio.run(telegram_app.process_update(update))
-                logger.info(f"Successfully processed update: {update.update_id}")
+                # Create new event loop for this request to avoid conflicts
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    loop.run_until_complete(telegram_app.process_update(update))
+                    logger.info(f"Successfully processed update: {update.update_id}")
+                finally:
+                    loop.close()
                 return jsonify({'status': 'ok'}), 200
             else:
                 logger.error("Telegram application not properly initialized")
