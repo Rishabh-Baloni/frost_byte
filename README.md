@@ -9,26 +9,35 @@ A comprehensive Telegram weather bot with advanced features including weather gr
 
 ## 🎯 Quick Demo
 
-1. **Send a city name** → Get instant weather report
-2. **Share location** → Get weather for your current location  
-3. **Use `/forecast London`** → Get 3-day weather forecast
-4. **Use `/compare London Paris`** → Compare weather between cities
-5. **Use `/forecastgraph Tokyo`** → Get visual weather graph
+1. **Send `/weather London`** → Get enhanced weather with recommendations and activity suggestions
+2. **Use `/w`** → Quick weather for your last searched city
+3. **Share location** → Get precise weather for your current location with coordinates
+4. **Use `/hourly Tokyo`** → Get detailed 24-hour forecast
+5. **Use `/compare London Paris`** → Compare weather with smart recommendations
+6. **Use `/forecastgraph Tokyo`** → Get visual weather graph
 
 ## 🚀 Features
 
-### 🌤️ Weather Information
+### 🌤️ Enhanced Weather Information
 - **Current Weather**: Temperature, humidity, wind speed, visibility
-- **Detailed Reports**: Feels-like temperature, min/max temps, sunrise/sunset
+- **Detailed Reports**: Feels-like temperature, accurate daily min/max temps, sunrise/sunset
 - **Air Quality**: Real-time air quality index with descriptive categories
-- **Location Support**: Share your location for instant local weather
+- **UV Index**: Sun exposure levels for safety planning
+- **Atmospheric Pressure**: Barometric pressure readings in hPa
+- **Location Support**: Share your location for instant local weather with precise coordinates
 
-### 📊 Advanced Features
+### 📊 Advanced Forecasting
 - **3-Day Forecasts**: Detailed weather predictions with timestamps
+- **24-Hour Forecasts**: Hourly weather predictions for detailed planning
 - **Weather Graphs**: Visual temperature charts with matplotlib
 - **City Comparisons**: Side-by-side weather comparison between cities
 - **Unit Conversion**: Switch between Celsius and Fahrenheit
-- **Interactive Buttons**: Easy-to-use inline keyboard interface
+
+### 🎯 Smart Recommendations
+- **Clothing Suggestions**: Smart recommendations based on temperature and conditions
+- **Activity Suggestions**: Personalized outdoor/indoor activity recommendations
+- **Weather Insights**: Practical advice for daily planning
+- **Safety Alerts**: Warnings for extreme weather conditions
 
 ### 🔧 Technical Features
 - **Auto-Wake System**: Prevents Render free tier from sleeping
@@ -125,13 +134,15 @@ WEBHOOK_PORT=10000
 ## 🤖 Bot Commands
 
 ### Basic Commands
-- `/start` - Initialize bot and see welcome message with interactive buttons
+- `/start` - Initialize bot with personalized welcome message
 - `/help` - Show detailed help and all available commands
 
 ### Weather Commands
 ```
-/weather <city>           # Get current weather for any city
+/weather <city>           # Get enhanced current weather with recommendations
+/w                        # Quick weather for your last searched city
 /forecast <city>          # Get 3-day weather forecast
+/hourly <city>            # Get detailed 24-hour forecast
 /forecastgraph <city>     # Generate visual weather graph
 /compare <city1> <city2>  # Compare weather between two cities
 /unit <celsius|fahrenheit> # Set temperature unit preference
@@ -139,17 +150,19 @@ WEBHOOK_PORT=10000
 
 ### Usage Examples
 ```
-/weather London
-/forecast New York
-/forecastgraph Tokyo
-/compare London Paris
-/unit fahrenheit
+/weather London           # Full weather report with recommendations
+/w                        # Quick repeat weather
+/hourly Tokyo             # 24-hour detailed forecast
+/forecast New York        # 3-day forecast
+/forecastgraph Paris      # Visual temperature graph
+/compare London Paris     # Side-by-side comparison
+/unit fahrenheit          # Switch to Fahrenheit
 ```
 
 ### Interactive Features
-- **Send city name**: Get instant weather (no command needed)
-- **Share location**: Get weather for your current coordinates
-- **Inline buttons**: Use interactive menu from `/start` command
+- **Share location**: Get enhanced weather for your current coordinates with precise location name
+- **Smart memory**: Bot remembers your last searched city for quick access
+- **Personalized greetings**: Welcome messages with your name
 
 ## 🔧 Architecture
 
@@ -182,18 +195,28 @@ def run_web_server():
 
 ## 📊 Features Overview
 
-### Weather Information
-- **Temperature**: Current, feels-like, min/max with unit conversion
+### Enhanced Weather Information
+- **Temperature**: Current, feels-like, accurate daily min/max with unit conversion
 - **Conditions**: Weather description, humidity, visibility
-- **Wind**: Speed and direction information
+- **Wind**: Speed information with safety recommendations
 - **Air Quality**: AQI with descriptive categories (Good/Fair/Poor)
-- **Astronomy**: Sunrise and sunset times
+- **UV Index**: Sun exposure levels for outdoor activity planning
+- **Atmospheric Pressure**: Barometric pressure readings
+- **Astronomy**: Sunrise and sunset times in local timezone
 
-### Advanced Features
-- **Forecasts**: 3-day predictions with 3-hour intervals
+### Smart Features
+- **Weather Recommendations**: Intelligent clothing and safety suggestions
+- **Activity Suggestions**: Personalized indoor/outdoor activity recommendations
+- **Quick Access**: `/w` command for instant repeat weather
+- **Memory**: Remembers your last searched city
+- **Enhanced Location**: Precise location identification with coordinates
+
+### Advanced Forecasting
+- **3-Day Forecasts**: Detailed predictions with 3-hour intervals
+- **24-Hour Forecasts**: Hourly weather with feels-like temperatures
 - **Graphs**: Temperature trend visualization with matplotlib
 - **Comparisons**: Side-by-side city weather analysis
-- **Location**: GPS coordinate-based weather lookup
+- **Location**: GPS coordinate-based weather lookup with reverse geocoding
 - **Units**: Celsius/Fahrenheit temperature switching
 
 ## 🐛 Troubleshooting
