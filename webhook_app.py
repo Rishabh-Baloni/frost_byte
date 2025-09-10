@@ -119,6 +119,26 @@ def get_weather(city, units):
         }
         country_name = country_codes.get(data['sys']['country'], data['sys']['country'])
         
+        # Get additional weather data
+        pressure = data["main"]["pressure"]
+        
+        # Get UV Index (requires separate API call)
+        uv_index = "N/A"
+        try:
+            uv_url = f"http://api.openweathermap.org/data/2.5/uvi?lat={lat}&lon={lon}&appid={WEATHER_API_KEY}"
+            uv_response = requests.get(uv_url)
+            if uv_response.status_code == 200:
+                uv_data = uv_response.json()
+                uv_index = round(uv_data.get("value", 0), 1)
+        except:
+            pass
+        
+        # Weather recommendations
+        recommendations = get_weather_recommendations(temp, weather, humidity, wind_speed)
+        
+        # Activity suggestions
+        activities = get_activity_suggestions(temp, weather, uv_index)
+        
         return (
             f"🌤️ Weather Report\n\n"
             f"📍 {data['name']}, {country_name}\n"
@@ -126,14 +146,74 @@ def get_weather(city, units):
             f"🌡️ Temperature: {temp}{unit_symbol} (Feels like: {feels_like}{unit_symbol})\n"
             f"📊 Min/Max: {temp_min}{unit_symbol} / {temp_max}{unit_symbol}\n"
             f"💧 Humidity: {humidity}%\n"
+            f"🌡️ Pressure: {pressure} hPa\n"
+            f"☀️ UV Index: {uv_index}\n"
             f"👁️ Visibility: {visibility} km\n"
             f"💨 Wind Speed: {wind_speed} m/s\n"
             f"🌅 Sunrise: {sunrise}\n"
             f"🌇 Sunset: {sunset}\n"
-            f"🌬️ Air Quality: {air_quality}"
+            f"🌬️ Air Quality: {air_quality}\n\n"
+            f"📝 Recommendations: {recommendations}\n"
+            f"🎯 Activities: {activities}"
         )
     else:
         return "Sorry, I couldn't find that city. Please make sure the name is correct."
+
+def get_weather_recommendations(temp, weather, humidity, wind_speed):
+    """Generate weather-based clothing and safety recommendations"""
+    recommendations = []
+    
+    # Temperature-based clothing
+    if temp < 0:
+        recommendations.append("🧥 Heavy winter coat, gloves, hat")
+    elif temp < 10:
+        recommendations.append("🧥 Warm jacket and layers")
+    elif temp < 20:
+        recommendations.append("👕 Light jacket or sweater")
+    elif temp < 30:
+        recommendations.append("👕 Comfortable clothing")
+    else:
+        recommendations.append("👕 Light, breathable clothing")
+    
+    # Weather condition recommendations
+    if "rain" in weather.lower() or "drizzle" in weather.lower():
+        recommendations.append("☔ Umbrella or raincoat")
+    elif "snow" in weather.lower():
+        recommendations.append("❄️ Waterproof boots and warm layers")
+    elif "storm" in weather.lower() or "thunder" in weather.lower():
+        recommendations.append("⚡ Stay indoors if possible")
+    
+    # Humidity recommendations
+    if humidity > 80:
+        recommendations.append("💧 Stay hydrated, expect muggy conditions")
+    elif humidity < 30:
+        recommendations.append("🧤 Use moisturizer, dry air")
+    
+    # Wind recommendations
+    if wind_speed > 10:
+        recommendations.append("💨 Secure loose items, windy conditions")
+    
+    return ", ".join(recommendations[:2])  # Limit to 2 recommendations
+
+def get_activity_suggestions(temp, weather, uv_index):
+    """Generate activity suggestions based on weather conditions"""
+    if "rain" in weather.lower() or "storm" in weather.lower():
+        return "🏠 Perfect for indoor activities, reading, movies"
+    elif "snow" in weather.lower():
+        return "⛄ Great for winter sports, snowman building"
+    elif temp < 5:
+        return "🏠 Indoor activities recommended, too cold outside"
+    elif temp > 35:
+        return "🏠 Stay cool indoors, avoid midday sun"
+    elif 20 <= temp <= 30 and "clear" in weather.lower():
+        if isinstance(uv_index, (int, float)) and uv_index > 7:
+            return "🏖️ Great for outdoor activities, use sunscreen"
+        else:
+            return "🏖️ Perfect weather for outdoor activities"
+    elif 15 <= temp <= 25:
+        return "🚶 Ideal for walking, hiking, outdoor sports"
+    else:
+        return "🌤️ Good day for light outdoor activities"
 
 def get_air_quality(lat, lon):
     air_quality_url = f"http://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={WEATHER_API_KEY}"
@@ -169,6 +249,23 @@ def get_forecast(city, days=3, units="metric"):
         return forecast
     else:
         return "❌ Sorry, I couldn't fetch the forecast. Please try again later."
+
+def get_hourly_forecast(city, units="metric"):
+    url = f"http://api.openweathermap.org/data/2.5/forecast?q={city}&appid={WEATHER_API_KEY}&units={units}&cnt=24"
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        unit_symbol = "°C" if units == "metric" else "°F"
+        forecast = f"⏰ 24-Hour Forecast for {city.title()}\n\n"
+        for i, entry in enumerate(data["list"][:8]):  # Show 8 entries (24 hours)
+            time = entry["dt_txt"].split()[1][:5]  # Extract time only
+            weather = entry["weather"][0]["description"]
+            temp = entry["main"]["temp"]
+            feels_like = entry["main"]["feels_like"]
+            forecast += f"🕐 {time} - {temp}{unit_symbol} (feels {feels_like}{unit_symbol}) - {weather.title()}\n"
+        return forecast
+    else:
+        return "❌ Sorry, I couldn't fetch the hourly forecast. Please try again later."
 
 def generate_weather_graph(forecast_data, city):
     # Extract data for plotting
@@ -216,11 +313,17 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "📋 Here are the commands you can use:\n\n"
         "🚀 /start - Start interacting with the bot\n"
         "❓ /help - Show this help message with all commands\n"
-        "🌤️ /weather <city> - Get current weather for the specified city\n   Example: /weather London\n"
+        "🌤️ /weather <city> - Get detailed current weather\n   Example: /weather London\n"
+        "⚡ /w - Quick weather for your last searched city\n"
         "📅 /forecast <city> - Get a 3-day weather forecast\n   Example: /forecast London\n"
+        "⏰ /hourly <city> - Get 24-hour detailed forecast\n   Example: /hourly Tokyo\n"
         "🌡️ /unit <celsius|fahrenheit> - Set your preferred temperature unit\n   Example: /unit celsius\n"
         "⚖️ /compare <city1> <city2> - Compare weather between two cities\n   Example: /compare London Paris\n"
         "📍 /forecastgraph <city> - Get a visual temperature forecast graph\n   Example: /forecastgraph Tokyo\n\n"
+        "🎆 New Features:\n"
+        "• ☀️ UV Index and atmospheric pressure\n"
+        "• 📝 Smart clothing recommendations\n"
+        "• 🎯 Activity suggestions based on weather\n\n"
         "📱 Location Feature:\n"
         "Share your location using the attachment button to get instant weather updates for your current position"
     )
@@ -244,18 +347,39 @@ async def weather(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if len(context.args) > 0:
         city = ' '.join(context.args)
         units = context.user_data.get("units", "metric")
+        # Store last searched city for quick weather
+        context.user_data["last_city"] = city
         weather_info = get_weather(city, units)
         await update.message.reply_text(weather_info)
     else:
         await update.message.reply_text("❌ Please specify a city.\nExample: /weather London")
 
+async def quick_weather(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    last_city = context.user_data.get("last_city")
+    if last_city:
+        units = context.user_data.get("units", "metric")
+        weather_info = get_weather(last_city, units)
+        await update.message.reply_text(f"⚡ Quick Weather for {last_city.title()}\n\n{weather_info}")
+    else:
+        await update.message.reply_text("❌ No previous city found.\nUse /weather <city> first, then /w for quick repeat.")
+
 async def forecast(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if len(context.args) > 0:
         city = ' '.join(context.args)
-        forecast_info = get_forecast(city)
+        units = context.user_data.get("units", "metric")
+        forecast_info = get_forecast(city, units=units)
         await update.message.reply_text(forecast_info)
     else:
         await update.message.reply_text("❌ Please specify a city.\nExample: /forecast London")
+
+async def hourly_forecast(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if len(context.args) > 0:
+        city = ' '.join(context.args)
+        units = context.user_data.get("units", "metric")
+        hourly_info = get_hourly_forecast(city, units)
+        await update.message.reply_text(hourly_info)
+    else:
+        await update.message.reply_text("❌ Please specify a city.\nExample: /hourly London")
 
 async def compare(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.info(f"Compare command received. Args: {context.args}")
@@ -547,6 +671,8 @@ def setup_telegram_app():
     telegram_app.add_handler(CommandHandler("help", help_command))
     telegram_app.add_handler(CommandHandler("weather", weather))
     telegram_app.add_handler(CommandHandler("forecast", forecast))
+    telegram_app.add_handler(CommandHandler("hourly", hourly_forecast))
+    telegram_app.add_handler(CommandHandler("w", quick_weather))
     telegram_app.add_handler(CommandHandler("unit", set_unit))
     telegram_app.add_handler(CommandHandler("forecastgraph", forecast_graph))
     telegram_app.add_handler(CommandHandler("compare", compare))
