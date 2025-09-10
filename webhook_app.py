@@ -2,6 +2,8 @@ import logging
 import os
 import requests
 import asyncio
+import threading
+import time
 from flask import Flask, request, jsonify
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -399,6 +401,17 @@ def setup_telegram_app():
     # Initialize the application
     asyncio.run(telegram_app.initialize())
 
+def auto_wake():
+    """Auto-wake function to prevent Render free tier from sleeping"""
+    while True:
+        try:
+            time.sleep(840)  # 14 minutes
+            if WEBHOOK_URL:
+                requests.get(f"{WEBHOOK_URL}/health", timeout=10)
+                logger.info("Auto-wake ping sent")
+        except Exception as e:
+            logger.error(f"Auto-wake error: {e}")
+
 def create_app():
     """Create and configure the Flask application"""
     # Validate environment variables
@@ -416,6 +429,11 @@ def create_app():
     
     # Setup Telegram application
     setup_telegram_app()
+    
+    # Start auto-wake system
+    wake_thread = threading.Thread(target=auto_wake, daemon=True)
+    wake_thread.start()
+    logger.info("Auto-wake system started")
     
     logger.info(f"Telegram application initialized successfully")
     logger.info(f"Webhook URL will be: {WEBHOOK_URL}/webhook")
