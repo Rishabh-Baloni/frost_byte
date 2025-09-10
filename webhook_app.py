@@ -318,7 +318,14 @@ def set_webhook():
         ensure_bot_initialized()
         
         webhook_url = f"{WEBHOOK_URL}/webhook"
-        result = asyncio.run(telegram_app.bot.set_webhook(url=webhook_url))
+        
+        # Create new event loop for this request
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(telegram_app.bot.set_webhook(url=webhook_url))
+        finally:
+            loop.close()
         
         if result:
             logger.info(f"Webhook set successfully to {webhook_url}")
@@ -363,18 +370,24 @@ def webhook_info():
         # Ensure bot is initialized
         ensure_bot_initialized()
         
-        webhook_info = asyncio.run(telegram_app.bot.get_webhook_info())
+        # Create new event loop for this request
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            webhook_info_result = loop.run_until_complete(telegram_app.bot.get_webhook_info())
+        finally:
+            loop.close()
 
         return jsonify({
             'status': 'success',
             'webhook_info': {
-                'url': webhook_info.url,
-                'has_custom_certificate': webhook_info.has_custom_certificate,
-                'pending_update_count': webhook_info.pending_update_count,
-                'last_error_date': webhook_info.last_error_date.isoformat() if webhook_info.last_error_date else None,
-                'last_error_message': webhook_info.last_error_message,
-                'max_connections': webhook_info.max_connections,
-                'allowed_updates': webhook_info.allowed_updates
+                'url': webhook_info_result.url,
+                'has_custom_certificate': webhook_info_result.has_custom_certificate,
+                'pending_update_count': webhook_info_result.pending_update_count,
+                'last_error_date': webhook_info_result.last_error_date.isoformat() if webhook_info_result.last_error_date else None,
+                'last_error_message': webhook_info_result.last_error_message,
+                'max_connections': webhook_info_result.max_connections,
+                'allowed_updates': webhook_info_result.allowed_updates
             }
         }), 200
 
