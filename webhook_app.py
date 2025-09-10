@@ -298,16 +298,48 @@ async def location_weather(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     location = update.message.location
     if location:
         lat, lon = location.latitude, location.longitude
-        url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={WEATHER_API_KEY}&units=metric"
-        response = requests.get(url)
-        if response.status_code == 200:
-            data = response.json()
+        
+        # First try to get detailed location info using reverse geocoding
+        geocoding_url = f"http://api.openweathermap.org/geo/1.0/reverse?lat={lat}&lon={lon}&limit=1&appid={WEATHER_API_KEY}"
+        geocoding_response = requests.get(geocoding_url)
+        
+        # Get weather data
+        weather_url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={WEATHER_API_KEY}&units=metric"
+        weather_response = requests.get(weather_url)
+        
+        if weather_response.status_code == 200:
+            data = weather_response.json()
             weather = data["weather"][0]["description"]
             temp = data["main"]["temp"]
             feels_like = data["main"]["feels_like"]
             humidity = data["main"]["humidity"]
             wind_speed = data["wind"]["speed"]
-            city_name = data.get("name", "Your Location")
+            
+            # Try to get more accurate location name from geocoding
+            location_name = "Your Location"
+            country_name = "Unknown"
+            
+            if geocoding_response.status_code == 200:
+                geo_data = geocoding_response.json()
+                if geo_data:
+                    location_info = geo_data[0]
+                    # Build location name with available info
+                    name_parts = []
+                    if 'name' in location_info:
+                        name_parts.append(location_info['name'])
+                    elif 'local_names' in location_info and 'en' in location_info['local_names']:
+                        name_parts.append(location_info['local_names']['en'])
+                    
+                    if 'state' in location_info and location_info['state'] not in name_parts:
+                        name_parts.append(location_info['state'])
+                    
+                    location_name = ", ".join(name_parts) if name_parts else f"Lat: {lat:.2f}, Lon: {lon:.2f}"
+                    country_name = location_info.get('country', 'Unknown')
+            
+            # If geocoding failed, use weather API location name
+            if location_name == "Your Location" and 'name' in data:
+                location_name = data['name']
+                country_name = data['sys'].get('country', 'Unknown')
             
             # Get full country name
             country_codes = {
@@ -328,11 +360,12 @@ async def location_weather(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 'JO': 'Jordan', 'LB': 'Lebanon', 'SY': 'Syria', 'IQ': 'Iraq', 'IR': 'Iran',
                 'AF': 'Afghanistan', 'PK': 'Pakistan', 'BD': 'Bangladesh', 'LK': 'Sri Lanka', 'NP': 'Nepal'
             }
-            country_name = country_codes.get(data['sys']['country'], data['sys']['country'])
+            full_country_name = country_codes.get(country_name, country_name)
             
             location_weather_text = (
                 f"📍 Location Weather Report\n\n"
-                f"📍 {city_name}, {country_name}\n"
+                f"📍 {location_name}, {full_country_name}\n"
+                f"🗺️ Coordinates: {lat:.4f}, {lon:.4f}\n"
                 f"🌦️ Weather: {weather.title()}\n"
                 f"🌡️ Temperature: {temp}°C (Feels like: {feels_like}°C)\n"
                 f"💧 Humidity: {humidity}%\n"
