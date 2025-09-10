@@ -49,7 +49,7 @@ A comprehensive Telegram weather bot with advanced features including weather gr
 
 ### 1. Clone Repository
 ```bash
-git clone https://github.com/your-username/frost_byte.git
+git clone https://github.com/Rishabh-Baloni/frost_byte.git
 cd frost_byte
 ```
 
@@ -247,8 +247,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👤 Author
 
-**Your Name**
-- GitHub: [@your-username](https://github.com/your-username)
+**Rishabh Baloni**
+- GitHub: [@Rishabh-Baloni](https://github.com/Rishabh-Baloni)
 - Telegram: [@your-telegram](https://t.me/your-telegram)
 
 ## 🤝 Contributing

@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: frostbyte-weather-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python webhook_app.py
+    envVars:
+      - key: TELEGRAM_TOKEN
+        sync: false
+      - key: WEATHER_API_KEY
+        sync: false
+      - key: WEBHOOK_URL
+        value: https://frostbyte-weather-bot.onrender.com
+      - key: WEBHOOK_PORT
+        value: 10000
