@@ -91,7 +91,7 @@ WEBHOOK_PORT=10000  # For production only
 
 ### 5. Run Locally
 ```bash
-python main.py
+python webhook_app.py
 ```
 
 ## 🌐 Deploy to Render
@@ -107,7 +107,7 @@ python main.py
 pip install -r requirements.txt
 
 # Start Command
-python main.py
+python webhook_app.py
 
 # Environment Variables
 TELEGRAM_TOKEN=your_telegram_bot_token_here
