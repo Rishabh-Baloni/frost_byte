@@ -69,9 +69,15 @@ def get_weather(city, units):
         visibility = data.get("visibility", 0) / 1000  # Convert to kilometers
         wind_speed = data["wind"]["speed"]
 
-        # Sunrise and sunset times
-        sunrise = datetime.fromtimestamp(data["sys"]["sunrise"]).strftime('%H:%M:%S')
-        sunset = datetime.fromtimestamp(data["sys"]["sunset"]).strftime('%H:%M:%S')
+        # Sunrise and sunset times (adjusted for city's timezone)
+        timezone_offset = data["timezone"]  # Offset in seconds from UTC
+        sunrise_utc = datetime.fromtimestamp(data["sys"]["sunrise"])
+        sunset_utc = datetime.fromtimestamp(data["sys"]["sunset"])
+        
+        # Apply timezone offset to get local time
+        from datetime import timedelta
+        sunrise = (sunrise_utc + timedelta(seconds=timezone_offset)).strftime('%H:%M:%S')
+        sunset = (sunset_utc + timedelta(seconds=timezone_offset)).strftime('%H:%M:%S')
         
         # Temperature unit symbol
         unit_symbol = "°C" if units == "metric" else "°F"
