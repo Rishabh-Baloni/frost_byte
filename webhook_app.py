@@ -163,23 +163,18 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await update.message.reply_text(help_text)
 
 async def set_unit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    try:
-        logger.info(f"Unit command received. Args: {context.args}")
-        if len(context.args) > 0:
-            unit = context.args[0].lower()
-            logger.info(f"Unit requested: {unit}")
-            if unit in ["celsius", "fahrenheit"]:
-                # Note: Unit preference will apply to this session only
-                context.user_data["units"] = "metric" if unit == "celsius" else "imperial"
-                logger.info(f"Unit set to: {context.user_data['units']}")
-                await update.message.reply_text(f"✅ Unit set to {unit.capitalize()} for this session.")
-            else:
-                await update.message.reply_text("❌ Please specify either 'celsius' or 'fahrenheit'.")
+    logger.info(f"Unit command received. Args: {context.args}")
+    if len(context.args) > 0:
+        unit = context.args[0].lower()
+        logger.info(f"Unit requested: {unit}")
+        if unit in ["celsius", "fahrenheit"]:
+            context.user_data["units"] = "metric" if unit == "celsius" else "imperial"
+            logger.info(f"Unit set to: {context.user_data['units']}")
+            await update.message.reply_text(f"✅ Unit set to {unit.capitalize()} for this session.")
         else:
-            await update.message.reply_text("❌ Please specify a unit: /unit celsius or /unit fahrenheit.")
-    except Exception as e:
-        logger.error(f"Error in set_unit: {e}")
-        await update.message.reply_text("❌ Error setting unit. Please try again.")
+            await update.message.reply_text("❌ Please specify either 'celsius' or 'fahrenheit'.")
+    else:
+        await update.message.reply_text("❌ Please specify a unit: /unit celsius or /unit fahrenheit.")
 
 async def weather(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if len(context.args) > 0:
@@ -199,26 +194,22 @@ async def forecast(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text("Please specify a city. Example: /forecast London")
 
 async def compare(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    try:
-        logger.info(f"Compare command received. Args: {context.args}")
-        if len(context.args) >= 2:
-            city1 = context.args[0]
-            city2 = context.args[1]
-            logger.info(f"Comparing cities: {city1} vs {city2}")
-            
-            units = context.user_data.get("units", "metric")
-            logger.info(f"Using units: {units}")
-            
-            weather_city1 = get_weather(city1, units)
-            weather_city2 = get_weather(city2, units)
-            
-            comparison_message = f"🌤️ Weather Comparison\n\n📍 {city1.title()}:\n{weather_city1}\n\n📍 {city2.title()}:\n{weather_city2}"
-            await update.message.reply_text(comparison_message)
-        else:
-            await update.message.reply_text("❌ Please specify two cities to compare. Example: /compare London Paris")
-    except Exception as e:
-        logger.error(f"Error in compare: {e}")
-        await update.message.reply_text("❌ Error comparing cities. Please try again.")
+    logger.info(f"Compare command received. Args: {context.args}")
+    if len(context.args) >= 2:
+        city1 = context.args[0]
+        city2 = context.args[1]
+        logger.info(f"Comparing cities: {city1} vs {city2}")
+        
+        units = context.user_data.get("units", "metric")
+        logger.info(f"Using units: {units}")
+        
+        weather_city1 = get_weather(city1, units)
+        weather_city2 = get_weather(city2, units)
+        
+        comparison_message = f"🌤️ Weather Comparison\n\n📍 {city1.title()}:\n{weather_city1}\n\n📍 {city2.title()}:\n{weather_city2}"
+        await update.message.reply_text(comparison_message)
+    else:
+        await update.message.reply_text("❌ Please specify two cities to compare. Example: /compare London Paris")
 
 async def forecast_graph(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if len(context.args) > 0:
