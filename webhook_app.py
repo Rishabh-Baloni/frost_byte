@@ -63,11 +63,22 @@ def get_weather(city, units):
         weather = data["weather"][0]["description"]
         temp = data["main"]["temp"]
         feels_like = data["main"]["feels_like"]
-        temp_min = data["main"]["temp_min"]
-        temp_max = data["main"]["temp_max"]
         humidity = data["main"]["humidity"]
         visibility = data.get("visibility", 0) / 1000  # Convert to kilometers
         wind_speed = data["wind"]["speed"]
+
+        # Get actual daily min/max from forecast data
+        forecast_url = f"http://api.openweathermap.org/data/2.5/forecast?q={city}&appid={WEATHER_API_KEY}&units={units}&cnt=8"
+        forecast_response = requests.get(forecast_url)
+        if forecast_response.status_code == 200:
+            forecast_data = forecast_response.json()
+            today_temps = [entry["main"]["temp"] for entry in forecast_data["list"]]
+            temp_min = min(today_temps)
+            temp_max = max(today_temps)
+        else:
+            # Fallback to current API values if forecast fails
+            temp_min = data["main"]["temp_min"]
+            temp_max = data["main"]["temp_max"]
 
         # Sunrise and sunset times (adjusted for city's timezone)
         timezone_offset = data["timezone"]  # Offset in seconds from UTC
