@@ -98,9 +98,30 @@ def get_weather(city, units):
         air_quality = get_air_quality(lat, lon)
 
         # Format and return detailed weather information
+        # Get full country name
+        country_codes = {
+            'US': 'United States', 'GB': 'United Kingdom', 'CA': 'Canada', 'AU': 'Australia',
+            'DE': 'Germany', 'FR': 'France', 'IT': 'Italy', 'ES': 'Spain', 'NL': 'Netherlands',
+            'BE': 'Belgium', 'CH': 'Switzerland', 'AT': 'Austria', 'SE': 'Sweden', 'NO': 'Norway',
+            'DK': 'Denmark', 'FI': 'Finland', 'IE': 'Ireland', 'PT': 'Portugal', 'GR': 'Greece',
+            'PL': 'Poland', 'CZ': 'Czech Republic', 'HU': 'Hungary', 'RO': 'Romania', 'BG': 'Bulgaria',
+            'HR': 'Croatia', 'SI': 'Slovenia', 'SK': 'Slovakia', 'LT': 'Lithuania', 'LV': 'Latvia',
+            'EE': 'Estonia', 'RU': 'Russia', 'UA': 'Ukraine', 'BY': 'Belarus', 'MD': 'Moldova',
+            'JP': 'Japan', 'CN': 'China', 'KR': 'South Korea', 'IN': 'India', 'TH': 'Thailand',
+            'VN': 'Vietnam', 'PH': 'Philippines', 'ID': 'Indonesia', 'MY': 'Malaysia', 'SG': 'Singapore',
+            'BR': 'Brazil', 'AR': 'Argentina', 'MX': 'Mexico', 'CL': 'Chile', 'CO': 'Colombia',
+            'PE': 'Peru', 'VE': 'Venezuela', 'UY': 'Uruguay', 'PY': 'Paraguay', 'BO': 'Bolivia',
+            'EC': 'Ecuador', 'ZA': 'South Africa', 'EG': 'Egypt', 'MA': 'Morocco', 'NG': 'Nigeria',
+            'KE': 'Kenya', 'GH': 'Ghana', 'TZ': 'Tanzania', 'UG': 'Uganda', 'ZW': 'Zimbabwe',
+            'TR': 'Turkey', 'SA': 'Saudi Arabia', 'AE': 'United Arab Emirates', 'IL': 'Israel',
+            'JO': 'Jordan', 'LB': 'Lebanon', 'SY': 'Syria', 'IQ': 'Iraq', 'IR': 'Iran',
+            'AF': 'Afghanistan', 'PK': 'Pakistan', 'BD': 'Bangladesh', 'LK': 'Sri Lanka', 'NP': 'Nepal'
+        }
+        country_name = country_codes.get(data['sys']['country'], data['sys']['country'])
+        
         return (
-            f"🌤️ **Weather Report**\n\n"
-            f"📍 **{data['name']}, {data['sys']['country']}**\n"
+            f"🌤️ Weather Report\n\n"
+            f"📍 {data['name']}, {country_name}\n"
             f"🌦️ Weather: {weather.title()}\n"
             f"🌡️ Temperature: {temp}{unit_symbol} (Feels like: {feels_like}{unit_symbol})\n"
             f"📊 Min/Max: {temp_min}{unit_symbol} / {temp_max}{unit_symbol}\n"
@@ -139,7 +160,7 @@ def get_forecast(city, days=3, units="metric"):
     if response.status_code == 200:
         data = response.json()
         unit_symbol = "°C" if units == "metric" else "°F"
-        forecast = f"📅 **Weather Forecast for {city.title()}**\n\n"
+        forecast = f"📅 Weather Forecast for {city.title()}\n\n"
         for i, entry in enumerate(data["list"][:12]):  # Show 12 entries (1.5 days)
             time = entry["dt_txt"]
             weather = entry["weather"][0]["description"]
@@ -266,7 +287,7 @@ async def location_weather(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             weather = data["weather"][0]["description"]
             temp = data["main"]["temp"]
             city_name = data.get("name", "Your Location")
-            await update.message.reply_text(f"📍 **Weather at {city_name}**\n\n🌤️ {weather.title()}\n🌡️ Temperature: {temp}°C")
+            await update.message.reply_text(f"📍 Weather at {city_name}\n\n🌤️ {weather.title()}\n🌡️ Temperature: {temp}°C")
         else:
             await update.message.reply_text("❌ Sorry, I couldn't fetch the weather for your location.")
     else:
