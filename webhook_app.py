@@ -82,15 +82,17 @@ def get_weather(city, units):
 
         # Format and return detailed weather information
         return (
-            f"Weather: {weather}\n"
-            f"Temperature: {temp}{unit_symbol} (Feels like: {feels_like}{unit_symbol})\n"
-            f"Min/Max Temperature: {temp_min}{unit_symbol} / {temp_max}{unit_symbol}\n"
-            f"Humidity: {humidity}%\n"
-            f"Visibility: {visibility} km\n"
-            f"Wind Speed: {wind_speed} m/s\n"
-            f"Sunrise: {sunrise}\n"
-            f"Sunset: {sunset}\n\n"
-            f"Air Quality: {air_quality}"
+            f"🌤️ **Weather Report**\n\n"
+            f"📍 **{data['name']}, {data['sys']['country']}**\n"
+            f"🌦️ Weather: {weather.title()}\n"
+            f"🌡️ Temperature: {temp}{unit_symbol} (Feels like: {feels_like}{unit_symbol})\n"
+            f"📊 Min/Max: {temp_min}{unit_symbol} / {temp_max}{unit_symbol}\n"
+            f"💧 Humidity: {humidity}%\n"
+            f"👁️ Visibility: {visibility} km\n"
+            f"💨 Wind Speed: {wind_speed} m/s\n"
+            f"🌅 Sunrise: {sunrise}\n"
+            f"🌇 Sunset: {sunset}\n"
+            f"🌬️ Air Quality: {air_quality}"
         )
     else:
         return "Sorry, I couldn't find that city. Please make sure the name is correct."
@@ -119,15 +121,16 @@ def get_forecast(city, days=3, units="metric"):
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
-        forecast = f"Weather Forecast for {city}:\n"
-        for entry in data["list"]:
+        unit_symbol = "°C" if units == "metric" else "°F"
+        forecast = f"📅 **Weather Forecast for {city.title()}**\n\n"
+        for i, entry in enumerate(data["list"][:12]):  # Show 12 entries (1.5 days)
             time = entry["dt_txt"]
             weather = entry["weather"][0]["description"]
             temp = entry["main"]["temp"]
-            forecast += f"Time: {time} \n Weather: {weather} \n Temp: {temp}° \n\n"
+            forecast += f"🕐 {time}\n🌤️ {weather.title()}\n🌡️ {temp}{unit_symbol}\n\n"
         return forecast
     else:
-        return "Sorry, I couldn't fetch the forecast. Please try again later."
+        return "❌ Sorry, I couldn't fetch the forecast. Please try again later."
 
 def generate_weather_graph(forecast_data, city):
     # Extract data for plotting
@@ -152,18 +155,18 @@ def generate_weather_graph(forecast_data, city):
 
 # Command handlers (unchanged from original)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text("Hi! I'm a weather bot. Use /weather <city> to get the weather, or /forecast <city> to get the forecast.")
+    await update.message.reply_text("🌤️ Hi! I'm FrostByte Weather Bot. Use /weather <city> to get the weather, or /forecast <city> to get the forecast.")
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     help_text = (
-        "Here are the commands you can use:\n\n"
-        "/start - Start interacting with the bot.\n"
-        "/help - Show this help message with all commands.\n"
-        "/weather <city> - Get the current weather for the specified city.\nExample: /weather London.\n"
-        "/forecast <city> - Get a 3-day weather forecast for the specified city.\nExample: /forecast London.\n"
-        "/unit <celsius|fahrenheit> - Set your preferred temperature unit.\nExample: /unit celsius.\n"
-        "/compare <city1> <city2> - Compare the current weather between two cities.\nExample: /compare London Paris.\n"
-        "Additionally, share your location to get the current weather for where you are."
+        "📋 Here are the commands you can use:\n\n"
+        "🚀 /start - Start interacting with the bot\n"
+        "❓ /help - Show this help message with all commands\n"
+        "🌤️ /weather <city> - Get current weather for the specified city\n   Example: /weather London\n"
+        "📅 /forecast <city> - Get a 3-day weather forecast\n   Example: /forecast London\n"
+        "🌡️ /unit <celsius|fahrenheit> - Set your preferred temperature unit\n   Example: /unit celsius\n"
+        "⚖️ /compare <city1> <city2> - Compare weather between two cities\n   Example: /compare London Paris\n"
+        "📍 Additionally, share your location to get weather for where you are"
     )
     await update.message.reply_text(help_text)
 
@@ -245,7 +248,8 @@ async def location_weather(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             data = response.json()
             weather = data["weather"][0]["description"]
             temp = data["main"]["temp"]
-            await update.message.reply_text(f"Weather at your location: {weather}\nTemperature: {temp}°C")
+            city_name = data.get("name", "Your Location")
+            await update.message.reply_text(f"📍 **Weather at {city_name}**\n\n🌤️ {weather.title()}\n🌡️ Temperature: {temp}°C")
         else:
             await update.message.reply_text("❌ Sorry, I couldn't fetch the weather for your location.")
     else:
