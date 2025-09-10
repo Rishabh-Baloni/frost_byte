@@ -3,7 +3,7 @@ services:
     name: frostbyte-weather-bot
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python webhook_app.py
+    startCommand: python simple_webhook.py
     envVars:
       - key: TELEGRAM_TOKEN
         sync: false
