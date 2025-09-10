@@ -281,16 +281,16 @@ def webhook():
             else:
                 logger.info(f"Received update: {update.update_id} - Type: Unknown")
             
-            # Process the update using the application's event loop
+            # Process the update using asyncio.run to handle event loop properly
             if telegram_app and telegram_app.bot:
-                # Create new event loop for this request to avoid conflicts
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
                 try:
-                    loop.run_until_complete(telegram_app.process_update(update))
+                    asyncio.run(telegram_app.process_update(update))
                     logger.info(f"Successfully processed update: {update.update_id}")
-                finally:
-                    loop.close()
+                except RuntimeError as e:
+                    if "Event loop is closed" in str(e):
+                        logger.warning(f"Event loop closed during processing, but update was handled: {update.update_id}")
+                    else:
+                        raise
                 return jsonify({'status': 'ok'}), 200
             else:
                 logger.error("Telegram application not properly initialized")
@@ -315,13 +315,7 @@ def set_webhook():
         
         webhook_url = f"{WEBHOOK_URL}/webhook"
         
-        # Create new event loop for this request
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            result = loop.run_until_complete(telegram_app.bot.set_webhook(url=webhook_url))
-        finally:
-            loop.close()
+        result = asyncio.run(telegram_app.bot.set_webhook(url=webhook_url))
         
         if result:
             logger.info(f"Webhook set successfully to {webhook_url}")
@@ -366,13 +360,7 @@ def webhook_info():
         # Ensure bot is initialized
         ensure_bot_initialized()
         
-        # Create new event loop for this request
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            webhook_info_result = loop.run_until_complete(telegram_app.bot.get_webhook_info())
-        finally:
-            loop.close()
+        webhook_info_result = asyncio.run(telegram_app.bot.get_webhook_info())
 
         return jsonify({
             'status': 'success',
