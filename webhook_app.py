@@ -166,8 +166,9 @@ async def set_unit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if len(context.args) > 0:
         unit = context.args[0].lower()
         if unit in ["celsius", "fahrenheit"]:
+            # Note: Unit preference will apply to this session only
             context.user_data["units"] = "metric" if unit == "celsius" else "imperial"
-            await update.message.reply_text(f"Unit set to {unit.capitalize()}.")
+            await update.message.reply_text(f"Unit set to {unit.capitalize()} for this session.")
         else:
             await update.message.reply_text("Please specify either 'celsius' or 'fahrenheit'.")
     else:
@@ -192,11 +193,20 @@ async def forecast(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def compare(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if len(context.args) >= 2:
-        city1, city2 = ' '.join(context.args[:-1]), context.args[-1]
+        # Split cities properly
+        cities = ' '.join(context.args).split()
+        if len(cities) >= 2:
+            city1 = cities[0]
+            city2 = cities[1]
+        else:
+            city1 = context.args[0]
+            city2 = context.args[1]
+        
         units = context.user_data.get("units", "metric")
         weather_city1 = get_weather(city1, units)
         weather_city2 = get_weather(city2, units)
-        comparison_message = f"Weather Comparison:\n\n{city1}:\n{weather_city1}\n\n{city2}:\n{weather_city2}"
+        
+        comparison_message = f"🌤️ Weather Comparison\n\n📍 {city1.title()}:\n{weather_city1}\n\n📍 {city2.title()}:\n{weather_city2}"
         await update.message.reply_text(comparison_message)
     else:
         await update.message.reply_text("Please specify two cities to compare. Example: /compare London Paris")
