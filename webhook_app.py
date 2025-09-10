@@ -188,7 +188,7 @@ async def weather(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         weather_info = get_weather(city, units)
         await update.message.reply_text(weather_info)
     else:
-        await update.message.reply_text("Please specify a city. Example: /weather London")
+        await update.message.reply_text("❌ Please specify a city. Example: /weather London")
 
 async def forecast(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if len(context.args) > 0:
@@ -196,7 +196,7 @@ async def forecast(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         forecast_info = get_forecast(city)
         await update.message.reply_text(forecast_info)
     else:
-        await update.message.reply_text("Please specify a city. Example: /forecast London")
+        await update.message.reply_text("❌ Please specify a city. Example: /forecast London")
 
 async def compare(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.info(f"Compare command received. Args: {context.args}")
@@ -231,9 +231,9 @@ async def forecast_graph(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             await update.message.reply_photo(photo=open(graph_path, "rb"))
             os.remove(graph_path)  # Clean up the file after sending
         else:
-            await update.message.reply_text("Sorry, I couldn't fetch the forecast data.")
+            await update.message.reply_text("❌ Sorry, I couldn't fetch the forecast data.")
     else:
-        await update.message.reply_text("Please specify a city. Example: /forecastgraph London")
+        await update.message.reply_text("❌ Please specify a city. Example: /forecastgraph London")
 
 async def location_weather(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     location = update.message.location
@@ -247,9 +247,9 @@ async def location_weather(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             temp = data["main"]["temp"]
             await update.message.reply_text(f"Weather at your location: {weather}\nTemperature: {temp}°C")
         else:
-            await update.message.reply_text("Sorry, I couldn't fetch the weather for your location.")
+            await update.message.reply_text("❌ Sorry, I couldn't fetch the weather for your location.")
     else:
-        await update.message.reply_text("Please share your location to get weather updates.")
+        await update.message.reply_text("❌ Please share your location to get weather updates.")
 
 # Flask routes for webhook management
 @app.route('/', methods=['GET'])
