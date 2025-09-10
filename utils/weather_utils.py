@@ -102,76 +102,45 @@ def get_forecast(city, days=3, units="metric"):
         return f"Error fetching forecast: {str(e)}"
 
 def generate_weather_graph(city, units="metric"):
-    """Generate weather graph from forecast data"""
+    """Generate weather graph for a city"""
     api_key = os.getenv("WEATHER_API_KEY")
     url = f"http://api.openweathermap.org/data/2.5/forecast?q={city}&appid={api_key}&units={units}&cnt=24"
     
     try:
         response = requests.get(url, timeout=10)
-        if response.status_code != 200:
+        if response.status_code == 200:
+            forecast_data = response.json()
+            
+            # Extract data for plotting
+            times = [entry["dt_txt"] for entry in forecast_data["list"]]
+            temperatures = [entry["main"]["temp"] for entry in forecast_data["list"]]
+
+            # Plot the data
+            plt.figure(figsize=(10, 5))
+            plt.plot(times, temperatures, marker="o", label="Temperature")
+            plt.xticks(rotation=45, ha="right", fontsize=8)
+            plt.xlabel("Time")
+            plt.ylabel(f"Temperature ({'°C' if units == 'metric' else '°F'})")
+            plt.title(f"Temperature Trend for {city}")
+            plt.legend()
+            plt.tight_layout()
+
+            # Save the graph to a file
+            graph_path = f"{city}_forecast.png"
+            plt.savefig(graph_path)
+            plt.close()
+            return graph_path
+        else:
             raise Exception("Could not fetch forecast data")
-        
-        data = response.json()
-        times = [datetime.strptime(entry["dt_txt"], "%Y-%m-%d %H:%M:%S").strftime("%m/%d %H:%M") for entry in data["list"]]
-        temperatures = [entry["main"]["temp"] for entry in data["list"]]
-        
-        plt.figure(figsize=(12, 6))
-        plt.plot(times, temperatures, marker="o", linewidth=2, markersize=4)
-        plt.xticks(rotation=45, ha="right", fontsize=8)
-        plt.xlabel("Time")
-        plt.ylabel(f"Temperature ({'°C' if units == 'metric' else '°F'})")
-        plt.title(f"24-Hour Temperature Forecast for {city}")
-        plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-        
-        graph_path = f"{city.replace(' ', '_')}_forecast.png"
-        plt.savefig(graph_path, dpi=150, bbox_inches='tight')
-        plt.close()
-        return graph_path
     except Exception as e:
         raise Exception(f"Error generating graph: {str(e)}")
 
 def compare_cities(city1, city2, units="metric"):
     """Compare weather between two cities"""
-    try:
-        weather1 = get_weather_data(city1, units)
-        weather2 = get_weather_data(city2, units)
-        
-        if "Error" in weather1 or "Error" in weather2:
-            return "Could not fetch weather data for one or both cities."
-        
-        unit_symbol = "°C" if units == "metric" else "°F"
-        
-        comparison = f"**{city1}** vs **{city2}**\n\n"
-        comparison += f"🌡️ Temperature: {weather1['temp']}{unit_symbol} vs {weather2['temp']}{unit_symbol}\n"
-        comparison += f"🌤️ Weather: {weather1['weather']} vs {weather2['weather']}\n"
-        comparison += f"💧 Humidity: {weather1['humidity']}% vs {weather2['humidity']}%\n"
-        comparison += f"💨 Wind: {weather1['wind_speed']} m/s vs {weather2['wind_speed']} m/s\n"
-        
-        temp_diff = abs(weather1['temp'] - weather2['temp'])
-        warmer_city = city1 if weather1['temp'] > weather2['temp'] else city2
-        comparison += f"\n🔥 {warmer_city} is {temp_diff:.1f}{unit_symbol} warmer"
-        
-        return comparison
-    except Exception as e:
-        return f"Error comparing cities: {str(e)}"
-
-def get_weather_data(city, units="metric"):
-    """Get weather data as dictionary"""
-    api_key = os.getenv("WEATHER_API_KEY")
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units={units}"
+    weather1 = get_weather(city1, units)
+    weather2 = get_weather(city2, units)
     
-    response = requests.get(url, timeout=10)
-    if response.status_code == 200:
-        data = response.json()
-        return {
-            'temp': data["main"]["temp"],
-            'weather': data["weather"][0]["description"],
-            'humidity': data["main"]["humidity"],
-            'wind_speed': data["wind"]["speed"]
-        }
-    else:
-        return {"Error": "City not found"}
+    return f"**{city1}:**\n{weather1}\n\n**{city2}:**\n{weather2}"
 
 def get_weather_by_coords(lat, lon, units="metric"):
     """Get weather by coordinates"""
@@ -182,23 +151,23 @@ def get_weather_by_coords(lat, lon, units="metric"):
         response = requests.get(url, timeout=10)
         if response.status_code == 200:
             data = response.json()
+            city_name = data["name"]
             weather = data["weather"][0]["description"]
             temp = data["main"]["temp"]
             feels_like = data["main"]["feels_like"]
             humidity = data["main"]["humidity"]
             wind_speed = data["wind"]["speed"]
-            city_name = data["name"]
             
             unit_symbol = "°C" if units == "metric" else "°F"
             
             return (
-                f"📍 Location: {city_name}\n"
+                f"Location: {city_name}\n"
                 f"Weather: {weather}\n"
                 f"Temperature: {temp}{unit_symbol} (Feels like: {feels_like}{unit_symbol})\n"
                 f"Humidity: {humidity}%\n"
                 f"Wind Speed: {wind_speed} m/s"
             )
         else:
-            return "Sorry, couldn't get weather for your location."
+            return "Could not get weather for this location"
     except Exception as e:
-        return f"Error fetching weather: {str(e)}"
+        return f"Error getting weather: {str(e)}"

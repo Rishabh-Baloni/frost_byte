@@ -9,7 +9,7 @@ import sys
 import logging
 from threading import Thread
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from bot.simple_weather_bot import start_simple_bot
+from bot.weather_bot import start_simple_bot
 from dotenv import load_dotenv
 
 # Load environment variables
