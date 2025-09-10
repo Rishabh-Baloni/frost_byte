@@ -4,6 +4,7 @@ import requests
 import asyncio
 import threading
 import time
+import queue
 from flask import Flask, request, jsonify
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -16,15 +17,19 @@ load_dotenv()
 # Configure Flask app
 app = Flask(__name__)
 
-# Initialize bot on first request
+# Thread-safe update queue
+update_queue = queue.Queue()
+_bot_thread = None
 _initialized = False
 
 def ensure_bot_initialized():
     """Ensure the bot is initialized before processing requests"""
-    global telegram_app, _initialized
+    global telegram_app, _initialized, _bot_thread
     if not _initialized:
         try:
             setup_telegram_app()
+            _bot_thread = threading.Thread(target=run_bot_thread, daemon=True)
+            _bot_thread.start()
             _initialized = True
             logger.info("Bot initialization completed successfully")
         except Exception as e:
@@ -281,20 +286,10 @@ def webhook():
             else:
                 logger.info(f"Received update: {update.update_id} - Type: Unknown")
             
-            # Process the update using asyncio.run to handle event loop properly
-            if telegram_app and telegram_app.bot:
-                try:
-                    asyncio.run(telegram_app.process_update(update))
-                    logger.info(f"Successfully processed update: {update.update_id}")
-                except RuntimeError as e:
-                    if "Event loop is closed" in str(e):
-                        logger.warning(f"Event loop closed during processing, but update was handled: {update.update_id}")
-                    else:
-                        raise
-                return jsonify({'status': 'ok'}), 200
-            else:
-                logger.error("Telegram application not properly initialized")
-                return jsonify({'error': 'Bot not initialized'}), 500
+            # Add update to queue for processing by bot thread
+            update_queue.put(update)
+            logger.info(f"Successfully queued update: {update.update_id}")
+            return jsonify({'status': 'ok'}), 200
                 
         except Exception as e:
             logger.error(f"Error processing webhook: {e}")
@@ -310,14 +305,13 @@ def set_webhook():
         if not WEBHOOK_URL:
             return jsonify({'error': 'WEBHOOK_URL environment variable not set'}), 400
         
-        # Ensure bot is initialized
-        ensure_bot_initialized()
-        
         webhook_url = f"{WEBHOOK_URL}/webhook"
         
-        result = asyncio.run(telegram_app.bot.set_webhook(url=webhook_url))
+        # Use requests to set webhook instead of asyncio
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/setWebhook"
+        response = requests.post(url, json={'url': webhook_url})
         
-        if result:
+        if response.status_code == 200:
             logger.info(f"Webhook set successfully to {webhook_url}")
             return jsonify({
                 'status': 'success',
@@ -357,23 +351,18 @@ def delete_webhook():
 def webhook_info():
     """Get current webhook information from Telegram"""
     try:
-        # Ensure bot is initialized
-        ensure_bot_initialized()
+        # Use requests to get webhook info instead of asyncio
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getWebhookInfo"
+        response = requests.get(url)
         
-        webhook_info_result = asyncio.run(telegram_app.bot.get_webhook_info())
-
-        return jsonify({
-            'status': 'success',
-            'webhook_info': {
-                'url': webhook_info_result.url,
-                'has_custom_certificate': webhook_info_result.has_custom_certificate,
-                'pending_update_count': webhook_info_result.pending_update_count,
-                'last_error_date': webhook_info_result.last_error_date.isoformat() if webhook_info_result.last_error_date else None,
-                'last_error_message': webhook_info_result.last_error_message,
-                'max_connections': webhook_info_result.max_connections,
-                'allowed_updates': webhook_info_result.allowed_updates
-            }
-        }), 200
+        if response.status_code == 200:
+            data = response.json()
+            return jsonify({
+                'status': 'success',
+                'webhook_info': data['result']
+            }), 200
+        else:
+            return jsonify({'error': 'Failed to get webhook info'}), 500
 
     except Exception as e:
         logger.error(f"Error getting webhook info: {e}")
@@ -396,6 +385,31 @@ def health_check():
             'webhook_url': f"{WEBHOOK_URL}/webhook" if WEBHOOK_URL else None
         }), 200
 
+def run_bot_thread():
+    """Run the bot in a separate thread with its own event loop"""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
+    async def process_updates():
+        await telegram_app.initialize()
+        while True:
+            try:
+                # Get update from queue with timeout
+                update = update_queue.get(timeout=1)
+                await telegram_app.process_update(update)
+                update_queue.task_done()
+            except queue.Empty:
+                continue
+            except Exception as e:
+                logger.error(f"Error processing update in bot thread: {e}")
+    
+    try:
+        loop.run_until_complete(process_updates())
+    except Exception as e:
+        logger.error(f"Bot thread error: {e}")
+    finally:
+        loop.close()
+
 def setup_telegram_app():
     """Initialize the Telegram application with handlers"""
     global telegram_app
@@ -413,9 +427,6 @@ def setup_telegram_app():
 
     # Location-based weather handler
     telegram_app.add_handler(MessageHandler(filters.LOCATION, location_weather))
-    
-    # Initialize the application
-    asyncio.run(telegram_app.initialize())
 
 def auto_wake():
     """Auto-wake function to prevent Render free tier from sleeping"""
